@@ -1,12 +1,15 @@
 {
   "name": "anistream-api",
   "private": true,
-  "version": "3.0.0",
+  "version": "4.0.0",
   "type": "module",
-  "scripts": { "start": "node index.js" },
+  "scripts": {
+    "start": "node index.js"
+  },
   "dependencies": {
-    "@consumet/extensions": "^1.7.0",
     "express": "^4.21.0"
   },
-  "engines": { "node": ">=18.0.0" }
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }
