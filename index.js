@@ -12,10 +12,10 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 const PROVIDER_LIST = [
-  { name: 'AnimePahe', create: () => new ANIME.AnimePahe() },
-  { name: 'Hianime', create: () => new ANIME.Hianime() },
   { name: 'AnimeKai', create: () => new ANIME.AnimeKai() },
+  { name: 'AnimePahe', create: () => new ANIME.AnimePahe() },
   { name: 'KickAssAnime', create: () => new ANIME.KickAssAnime() },
+  { name: 'Hianime', create: () => new ANIME.Hianime() },
 ];
 
 let currentProviderIdx = 0, anilist = null, providerName = '';
@@ -76,16 +76,33 @@ app.get('/api/info/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.get('/api/watch/*', async (req, res) => {
+// WATCH endpoint - extract episode ID from the raw URL to preserve $ and = chars
+app.use('/api/watch', async (req, res) => {
   try {
-    const epId = req.params[0];
-    res.json(await withFallback(al => al.fetchEpisodeSources(epId)));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    // Extract everything after /api/watch/
+    const fullPath = req.originalUrl;
+    const prefix = '/api/watch/';
+    const idx = fullPath.indexOf(prefix);
+    if (idx === -1) return res.status(400).json({ error: 'Invalid request' });
+    let epId = fullPath.substring(idx + prefix.length);
+    // Remove any query string
+    const qIdx = epId.indexOf('?');
+    if (qIdx !== -1) epId = epId.substring(0, qIdx);
+    // Decode URI components (in case frontend encoded the $)
+    epId = decodeURIComponent(epId);
+    if (!epId) return res.status(400).json({ error: 'Episode ID required' });
+    console.log('Watch request for episode:', epId);
+    const data = await withFallback(al => al.fetchEpisodeSources(epId));
+    res.json(data);
+  } catch (err) {
+    console.error('Watch error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('/api/servers/*', async (req, res) => {
   try {
-    const epId = req.params[0];
+    const epId = decodeURIComponent(req.originalUrl.replace('/api/servers/', '').split('?')[0]);
     res.json(await withFallback(al => al.fetchEpisodeServers(epId)));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -130,6 +147,6 @@ app.get('/api/proxy', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log('\n  AniStream API v3 on port ' + PORT);
-  console.log('  /api/health | /api/info/:id | /api/watch/:epId\n');
+  console.log('\n  AniStream API v3.1 on port ' + PORT);
+  console.log('  /api/health | /api/info/:id | /api/watch/{epId}\n');
 });
